@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>332376083539-lu7349aul3dnjoatpab88iq9f9sm7om2.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.332376083539-lu7349aul3dnjoatpab88iq9f9sm7om2</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>332376083539-qs2hokuca4vcalt2qv8caibak4kqklup.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyATpcblLUtNQEknjK8i-HaaRrXUjGGzJp4</string>
+	<key>GCM_SENDER_ID</key>
+	<string>332376083539</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.loanservice.loanApp</string>
+	<key>PROJECT_ID</key>
+	<string>loann-2e6ee</string>
+	<key>STORAGE_BUCKET</key>
+	<string>loann-2e6ee.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:332376083539:ios:2fb203aa9ec3fe63484aa6</string>
+</dict>
+</plist>
