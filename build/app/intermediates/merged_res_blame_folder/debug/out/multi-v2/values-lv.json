@@ -4,7 +4,7 @@
             "outputFile": "com.loanservice.loan_app-mergeDebugResources-50:/values-lv/values-lv.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\arush\\.gradle\\caches\\transforms-3\\6bd15c99a0bb5555d5d81bfde92b3a5e\\transformed\\jetified-play-services-basement-18.5.0\\res\\values-lv\\values.xml",
+                    "source": "C:\\Users\\arush\\.gradle\\caches\\transforms-3\\fb05ae390460bf4871e715fab7cec08b\\transformed\\jetified-play-services-basement-18.4.0\\res\\values-lv\\values.xml",
                     "from": {
                         "startLines": "4",
                         "startColumns": "0",

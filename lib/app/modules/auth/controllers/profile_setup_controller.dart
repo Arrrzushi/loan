@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
@@ -117,7 +117,7 @@ class ProfileSetupController extends GetxController {
       errorMessage.value = '';
 
       // COMPLETE BYPASS SOLUTION
-      final auth = FirebaseAuth.instance;
+      final auth = firebase_auth.FirebaseAuth.instance;
       final firestore = FirebaseFirestore.instance;
 
       try {
@@ -168,7 +168,7 @@ class ProfileSetupController extends GetxController {
         }
       } catch (authError) {
         // Handle specific Firebase Auth errors
-        if (authError is FirebaseAuthException) {
+        if (authError is firebase_auth.FirebaseAuthException) {
           if (authError.code == 'email-already-in-use') {
             errorMessage.value =
                 'Email is already registered. Please try logging in.';
@@ -193,7 +193,7 @@ class ProfileSetupController extends GetxController {
   }
 
   // Force-set the auth state without triggering the problematic code
-  void _forceSetAuthState(User user) {
+  void _forceSetAuthState(firebase_auth.User user) {
     try {
       // Get the AuthService instance directly
       final authService = Get.find<AuthService>();

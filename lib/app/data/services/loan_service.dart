@@ -36,6 +36,12 @@ class LoanService extends GetxService {
     return _loans.toList();
   }
 
+  // Get all loans - for admin only
+  Future<List<LoanModel>> getAllLoans() async {
+    // In a real app, this would fetch from a backend
+    return _loans.toList();
+  }
+
   // Generate some sample loans for UI testing
   void _generateSampleLoans() {
     final now = DateTime.now();
@@ -61,6 +67,17 @@ class LoanService extends GetxService {
       paidInstallments: 1,
       amountPaid: 5000,
       remainingAmount: 45000,
+      startDate: now.subtract(const Duration(days: 28)),
+      endDate: now.add(const Duration(days: 332)),
+      repayments: [
+        RepaymentModel(
+          id: 'repay1',
+          amount: 5000,
+          date: now.subtract(const Duration(days: 27)),
+          status: 'paid',
+        ),
+      ],
+      userName: 'John Doe',
     ));
 
     // Sample loan 2 - Pending approval
@@ -82,6 +99,9 @@ class LoanService extends GetxService {
       paidInstallments: 0,
       amountPaid: 0,
       remainingAmount: 15000,
+      startDate: now,
+      repayments: [],
+      userName: 'John Doe',
     ));
 
     // Sample loan 3 - Completed
@@ -107,6 +127,29 @@ class LoanService extends GetxService {
       paidInstallments: 3,
       amountPaid: 10000,
       remainingAmount: 0,
+      startDate: now.subtract(const Duration(days: 89)),
+      endDate: now.subtract(const Duration(days: 5)),
+      repayments: [
+        RepaymentModel(
+          id: 'repay3_1',
+          amount: 3500,
+          date: now.subtract(const Duration(days: 60)),
+          status: 'paid',
+        ),
+        RepaymentModel(
+          id: 'repay3_2',
+          amount: 3500,
+          date: now.subtract(const Duration(days: 30)),
+          status: 'paid',
+        ),
+        RepaymentModel(
+          id: 'repay3_3',
+          amount: 3000,
+          date: now.subtract(const Duration(days: 5)),
+          status: 'paid',
+        ),
+      ],
+      userName: 'John Doe',
     ));
   }
 
@@ -114,6 +157,15 @@ class LoanService extends GetxService {
   Stream<List<LoanModel>> getUserLoans() {
     // In a real app, this would filter by authenticated user ID
     return _loans.stream;
+  }
+
+  // Get all loans for current user as a list
+  Future<List<LoanModel>> getUserLoansAsList() async {
+    // In a real app, this would filter by authenticated user ID
+    final user = Get.find<AuthService>().currentUser.value;
+    if (user == null) return [];
+    
+    return _loans.where((loan) => loan.userId == user.id).toList();
   }
 
   // Apply for a new loan
@@ -135,6 +187,11 @@ class LoanService extends GetxService {
               _pow(1 + monthlyInterestRate, tenureMonths)) /
           (_pow(1 + monthlyInterestRate, tenureMonths) - 1);
 
+      // Get current user
+      final currentUser = _authService.currentUser.value;
+      final userName = currentUser?.fullName ?? 'User';
+      final userId = currentUser?.id ?? 'user1';
+
       // Create new loan
       final loan = LoanModel(
         id: loanId,
@@ -147,13 +204,16 @@ class LoanService extends GetxService {
         approvalDate: null,
         dueDate: now.add(Duration(days: 30)), // First payment in 30 days
         paymentDates: [],
-        userId: 'user1', // In real app, this would be current user ID
+        userId: userId, // Use current user ID
         loanType: loanType,
         purpose: purpose,
         totalInstallments: tenureMonths,
         paidInstallments: 0,
         amountPaid: 0,
         remainingAmount: amount,
+        startDate: now,
+        repayments: [],
+        userName: userName,
       );
 
       // Add to loans list
@@ -207,6 +267,14 @@ class LoanService extends GetxService {
         paidInstallments: loan.paidInstallments + 1,
         amountPaid: loan.amountPaid + amount,
         remainingAmount: loan.remainingAmount - amount,
+        startDate: loan.startDate,
+        endDate: loan.endDate,
+        repayments: [...loan.repayments, RepaymentModel(
+          id: 'repay${loan.id}_${loan.paidInstallments + 1}',
+          amount: amount,
+          date: DateTime.now(),
+          status: 'paid',
+        )],
       );
 
       // Update loan in list
@@ -251,6 +319,9 @@ class LoanService extends GetxService {
         paidInstallments: loan.paidInstallments,
         amountPaid: loan.amountPaid,
         remainingAmount: loan.remainingAmount,
+        startDate: loan.startDate,
+        endDate: loan.endDate,
+        repayments: loan.repayments,
       );
 
       // Update loan in list
@@ -289,5 +360,47 @@ class LoanService extends GetxService {
       return Stream.value([]);
     }
     return Stream.value([]);
+  }
+
+  // Reject a pending loan (admin function)
+  Future<bool> rejectLoan(String loanId) async {
+    try {
+      final index = _loans.indexWhere((loan) => loan.id == loanId);
+      if (index == -1) return false;
+
+      final loan = _loans[index];
+
+      // Update loan status
+      final updatedLoan = LoanModel(
+        id: loan.id,
+        amount: loan.amount,
+        emiAmount: loan.emiAmount,
+        tenureMonths: loan.tenureMonths,
+        interestRate: loan.interestRate,
+        status: 'rejected',
+        applicationDate: loan.applicationDate,
+        approvalDate: DateTime.now(),
+        dueDate: loan.dueDate,
+        paymentDates: loan.paymentDates,
+        userId: loan.userId,
+        loanType: loan.loanType,
+        purpose: loan.purpose,
+        totalInstallments: loan.totalInstallments,
+        paidInstallments: loan.paidInstallments,
+        amountPaid: loan.amountPaid,
+        remainingAmount: loan.remainingAmount,
+        startDate: loan.startDate,
+        endDate: loan.endDate,
+        repayments: loan.repayments,
+      );
+
+      // Update loan in list
+      _loans[index] = updatedLoan;
+
+      return true;
+    } catch (e) {
+      print('Error rejecting loan: $e');
+      return false;
+    }
   }
 }

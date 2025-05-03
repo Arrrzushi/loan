@@ -4,7 +4,7 @@
             "outputFile": "com.loanservice.loan_app-mergeDebugResources-50:/values-night-v8/values-night-v8.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\arush\\Downloads\\site\\loan\\loan_app\\android\\app\\src\\main\\res\\values-night\\styles.xml",
+                    "source": "C:\\Users\\arush\\Downloads\\site\\loan\\loanC\\loan\\android\\app\\src\\main\\res\\values-night\\styles.xml",
                     "from": {
                         "startLines": "3,14",
                         "startColumns": "4,4",

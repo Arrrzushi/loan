@@ -1,20 +1,29 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:cloud_firestore/cloud_firestore.dart' hide Timestamp;
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore
-    show Timestamp;
+import 'package:loan_app/app/data/models/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// Firebase imports commented out for mock implementation
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:google_sign_in/google_sign_in.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart' hide Timestamp;
+// import 'package:cloud_firestore/cloud_firestore.dart' as firestore show Timestamp;
 
-import '../models/user_model.dart';
+// Mock Firebase User
+class User {
+  final String uid;
+  final String? email;
+  final String? displayName;
+  
+  User({required this.uid, this.email, this.displayName});
+}
 
-// Adding Timestamp alias for easier use
-typedef Timestamp = firestore.Timestamp;
+// Adding Timestamp alias for easier use (not used in mock version)
+// typedef Timestamp = firestore.Timestamp;
 
 class AuthService extends GetxService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // Mock Firebase instances
+  // final FirebaseAuth _auth = FirebaseAuth.instance;
+  // final GoogleSignIn _googleSignIn = GoogleSignIn();
+  // final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Current user data
   final Rx<User?> firebaseUser = Rx<User?>(null);
@@ -36,23 +45,43 @@ class AuthService extends GetxService {
     super.onInit();
     print('AuthService initialized');
 
-    // Listen to Firebase auth changes
-    _auth.authStateChanges().listen((User? user) {
-      firebaseUser.value = user;
-      if (user != null) {
-        // Fetch user data from Firestore
-        _fetchUserData(user.uid);
-      } else {
-        _currentUser.value = null;
-      }
-    });
-
-    // Check for saved preferences (used for our direct method)
+    // Create mock user for development
+    _createMockUser();
+    
+    // Check for saved preferences
     _checkSavedCredentials();
+  }
+  
+  // Create a mock user for development
+  void _createMockUser() {
+    final mockFirebaseUser = User(
+      uid: 'user1',
+      email: 'user@example.com',
+      displayName: 'John Doe'
+    );
+    
+    firebaseUser.value = mockFirebaseUser;
+    
+    final userModel = UserModel(
+      id: 'user1',
+      email: 'user@example.com',
+      fullName: 'John Doe',
+      phoneNumber: '1234567890',
+      address: '123 Test Street',
+      city: 'Test City',
+      state: 'Test State',
+      zipCode: '12345',
+      country: 'Test Country',
+      kycStatus: 'verified',
+      isAdmin: true,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    
+    _currentUser.value = userModel;
   }
 
   // Check for saved login credentials in SharedPreferences
-  // This is our fallback for when Firebase auth state doesn't work
   Future<void> _checkSavedCredentials() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -90,460 +119,258 @@ class AuthService extends GetxService {
     return _currentUser.value;
   }
 
-  // Fetch user data from Firestore - improved to handle errors
-  Future<void> _fetchUserData(String userId) async {
-    try {
-      final doc = await _firestore.collection('users').doc(userId).get();
-
-      if (doc.exists) {
-        try {
-          final data = doc.data() ?? {};
-
-          // Add safe handling for timestamp conversion
-          if (data['createdAt'] == null) {
-            data['createdAt'] = DateTime.now().millisecondsSinceEpoch;
-          } else if (data['createdAt'] is Timestamp) {
-            data['createdAt'] =
-                (data['createdAt'] as Timestamp).millisecondsSinceEpoch;
-          }
-
-          if (data['updatedAt'] == null) {
-            data['updatedAt'] = DateTime.now().millisecondsSinceEpoch;
-          } else if (data['updatedAt'] is Timestamp) {
-            data['updatedAt'] =
-                (data['updatedAt'] as Timestamp).millisecondsSinceEpoch;
-          }
-
-          _currentUser.value = UserModel.fromMap({
-            'id': doc.id,
-            ...data,
-          });
-        } catch (formatError) {
-          print('Error parsing user data: $formatError');
-
-          // Create a minimal user with just the ID and available fields
-          final data = doc.data() ?? {};
-          _currentUser.value = UserModel(
-            id: doc.id,
-            email: data['email'] as String? ?? '',
-            fullName: data['fullName'] as String? ?? 'User',
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-        }
-      } else {
-        // User exists in Auth but not in Firestore
-        _currentUser.value = null;
-      }
-    } catch (e) {
-      print('Error fetching user data: $e');
-      _currentUser.value = null;
-    }
-  }
-
-  // Sign in with email and password
+  // Sign in with email and password (mock implementation)
   Future<UserModel?> signIn({
     required String email,
     required String password,
   }) async {
     try {
-      final userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      if (userCredential.user != null) {
-        try {
-          await _fetchUserData(userCredential.user!.uid);
-
-          if (_currentUser.value == null) {
-            // User exists in Auth but not in Firestore, create a basic profile
-            final newUser = UserModel(
-              id: userCredential.user!.uid,
-              email: userCredential.user!.email ?? email,
-              fullName: userCredential.user!.displayName ?? 'User',
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            );
-
-            try {
-              // Try to save to Firestore
-              await _firestore
-                  .collection('users')
-                  .doc(userCredential.user!.uid)
-                  .set(newUser.toMap());
-
-              _currentUser.value = newUser;
-            } catch (e) {
-              print('Failed to save user to Firestore: $e');
-              // Still set the user locally
-              _currentUser.value = newUser;
-            }
-          }
-
-          return _currentUser.value;
-        } catch (e) {
-          print('Error with user data: $e');
-          // Still return a basic user object since authentication succeeded
-          final basicUser = UserModel(
-            id: userCredential.user!.uid,
-            email: userCredential.user!.email ?? email,
-            fullName: userCredential.user!.displayName ?? 'User',
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-
-          _currentUser.value = basicUser;
-          return basicUser;
-        }
+      // Mock successful authentication
+      if (email.isNotEmpty && password.isNotEmpty) {
+        final mockUserId = 'user1';
+        
+        // Create mock Firebase user
+        firebaseUser.value = User(
+          uid: mockUserId,
+          email: email,
+          displayName: 'Test User'
+        );
+        
+        // Create user model
+        final user = UserModel(
+          id: mockUserId,
+          email: email,
+          fullName: 'John Doe',
+          phoneNumber: '1234567890',
+          address: '123 Test Street',
+          city: 'Test City',
+          state: 'Test State',
+          zipCode: '12345',
+          country: 'Test Country',
+          isAdmin: email.contains('admin'),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        
+        _currentUser.value = user;
+        
+        // Save to preferences
+        final prefs = await SharedPreferences.getInstance();
+        prefs.setBool('isLoggedIn', true);
+        prefs.setString('userId', user.id);
+        prefs.setString('userEmail', user.email);
+        prefs.setString('userName', user.fullName);
+        
+        return user;
       }
-
+      
       return null;
-    } on FirebaseAuthException catch (e) {
-      print('Sign in error: $e');
-      throw e.message ?? 'Authentication failed';
     } catch (e) {
       print('Sign in error: $e');
       throw 'Authentication failed';
     }
   }
 
-  // Sign in with Google
+  // Sign in with Google (mock implementation)
   Future<UserModel?> signInWithGoogle() async {
     try {
-      // Trigger the Google Sign-in flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
-      if (googleUser == null) {
-        return null; // User canceled the sign-in
-      }
-
-      // Get the authentication details
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      // Create a new credential
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+      // Mock Google sign-in
+      final user = UserModel(
+        id: 'google_user1',
+        email: 'google_user@example.com',
+        fullName: 'Google User',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
-
-      // Sign in with the credential
-      final userCredential = await _auth.signInWithCredential(credential);
-      final user = userCredential.user;
-
-      if (user != null) {
-        // Check if user exists in Firestore
-        final userDoc =
-            await _firestore.collection('users').doc(user.uid).get();
-
-        if (!userDoc.exists) {
-          // Create new user in Firestore
-          final newUser = UserModel(
-            id: user.uid,
-            email: user.email ?? '',
-            fullName: user.displayName ?? '',
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-
-          await _firestore
-              .collection('users')
-              .doc(user.uid)
-              .set(newUser.toMap());
-          _currentUser.value = newUser;
-        } else {
-          await _fetchUserData(user.uid);
-        }
-
-        return _currentUser.value;
-      }
-
-      return null;
+      
+      _currentUser.value = user;
+      firebaseUser.value = User(
+        uid: 'google_user1',
+        email: 'google_user@example.com',
+        displayName: 'Google User'
+      );
+      
+      return user;
     } catch (e) {
-      print('Google Sign-in error: $e');
+      print('Google sign in error: $e');
       return null;
     }
   }
 
-  // Send OTP to phone number
-  Future<bool> sendOtp(String phoneNumber) async {
-    try {
-      await _auth.verifyPhoneNumber(
-        phoneNumber: phoneNumber,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          // Auto-verification on Android
-          await _auth.signInWithCredential(credential);
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          throw e.message ?? 'Verification failed';
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          _verificationId = verificationId;
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          _verificationId = verificationId;
-        },
-        timeout: const Duration(seconds: 60),
-      );
-
-      return true;
-    } catch (e) {
-      print('Send OTP error: $e');
-      return false;
-    }
-  }
-
-  // Verify OTP
-  Future<bool> verifyOtp(String otp) async {
-    try {
-      if (_verificationId == null) {
-        return false;
-      }
-
-      // Create credential
-      final credential = PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: otp,
-      );
-
-      // Sign in with credential
-      final userCredential = await _auth.signInWithCredential(credential);
-
-      if (userCredential.user != null) {
-        // Link with existing user if needed
-        if (firebaseUser.value != null &&
-            firebaseUser.value!.uid != userCredential.user!.uid) {
-          await firebaseUser.value!.updatePhoneNumber(credential);
-        }
-
-        return true;
-      }
-
-      return false;
-    } catch (e) {
-      print('Verify OTP error: $e');
-      return false;
-    }
-  }
-
-  // Register new user
-  Future<UserModel?> registerUser({
+  // Sign up with email and password (mock implementation)
+  Future<UserModel?> signUp({
     required String email,
     required String password,
     required String fullName,
-    required String phoneNumber,
   }) async {
     try {
-      // Create user in Firebase Auth
-      final userCredential = await _auth.createUserWithEmailAndPassword(
+      // Mock user creation
+      final user = UserModel(
+        id: 'new_user_${DateTime.now().millisecondsSinceEpoch}',
         email: email,
-        password: password,
-      );
-
-      if (userCredential.user != null) {
-        try {
-          // Create user in Firestore
-          final newUser = UserModel(
-            id: userCredential.user!.uid,
-            email: email,
-            fullName: fullName,
-            phoneNumber: phoneNumber,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-
-          await _firestore
-              .collection('users')
-              .doc(userCredential.user!.uid)
-              .set(newUser.toMap());
-
-          // Update display name - This might trigger PigeonUserDetails error
-          try {
-            await userCredential.user!.updateDisplayName(fullName);
-          } catch (displayNameError) {
-            print('UpdateDisplayName error (non-critical): $displayNameError');
-            // We can continue without updating display name
-          }
-
-          // Set the current user even if display name update fails
-          _currentUser.value = newUser;
-          return newUser;
-        } catch (firestoreError) {
-          print('Firestore error: $firestoreError');
-
-          // Even if there's an error with Firestore, the user is created in Firebase Auth
-          // So we'll create a basic user model with the available information
-          final basicUser = UserModel(
-            id: userCredential.user!.uid,
-            email: email,
-            fullName: fullName,
-            phoneNumber: phoneNumber,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-
-          _currentUser.value = basicUser;
-          return basicUser;
-        }
-      }
-
-      return null;
-    } on FirebaseAuthException catch (e) {
-      print('Registration error (FirebaseAuthException): $e');
-      throw e.message ?? 'Registration failed';
-    } catch (e) {
-      // Check if this is the PigeonUserDetails error
-      if (e.toString().contains('PigeonUserDetails')) {
-        print('Caught PigeonUserDetails error during registration: $e');
-
-        // Try to find the user that was just created
-        try {
-          // Check if user exists and try to sign in
-          final signInResult = await _auth.signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-
-          if (signInResult.user != null) {
-            // User was created but PigeonUserDetails error occurred
-            final recoveredUser = UserModel(
-              id: signInResult.user!.uid,
-              email: email,
-              fullName: fullName,
-              phoneNumber: phoneNumber,
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            );
-
-            // Try to save to Firestore in background
-            _firestore
-                .collection('users')
-                .doc(signInResult.user!.uid)
-                .set(recoveredUser.toMap())
-                .catchError((e) => print('Recovery Firestore error: $e'));
-
-            _currentUser.value = recoveredUser;
-            return recoveredUser;
-          }
-        } catch (recoveryError) {
-          print('Recovery attempt failed: $recoveryError');
-          // Continue to throw the original error
-        }
-      }
-
-      print('Registration error: $e');
-      throw 'Registration failed: ${e.toString()}';
-    }
-  }
-
-  // Upload KYC document
-  Future<bool> uploadKycDocument({
-    required String documentType,
-    required String documentFile,
-    required String selfieFile,
-  }) async {
-    try {
-      if (firebaseUser.value == null || _currentUser.value == null) {
-        return false;
-      }
-
-      // In a real app, you would upload files to Firebase Storage
-      // and store references in Firestore
-
-      // Update user KYC status in Firestore
-      await _firestore.collection('users').doc(firebaseUser.value!.uid).update({
-        'documentType': documentType,
-        'kycDocumentUrl': 'https://example.com/documents/$documentFile',
-        'kycStatus': 'pending',
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      // Update local user model
-      _currentUser.value = _currentUser.value!.copyWith(
-        documentType: documentType,
-        kycDocumentUrl: 'https://example.com/documents/$documentFile',
-        kycStatus: 'pending',
+        fullName: fullName,
+        createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-
-      // For demo, automatically approve KYC after delay
-      await Future.delayed(const Duration(seconds: 1));
-
-      await _firestore.collection('users').doc(firebaseUser.value!.uid).update({
-        'kycStatus': 'verified',
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      _currentUser.value = _currentUser.value!.copyWith(
-        kycStatus: 'verified',
-        updatedAt: DateTime.now(),
+      
+      _currentUser.value = user;
+      firebaseUser.value = User(
+        uid: user.id,
+        email: email,
+        displayName: fullName
       );
-
-      return true;
+      
+      return user;
     } catch (e) {
-      print('KYC upload error: $e');
-      return false;
+      print('Sign up error: $e');
+      throw 'Registration failed';
     }
   }
 
-  // Update user profile
-  Future<bool> updateUserProfile({
-    required String phoneNumber,
-    required String address,
-  }) async {
-    try {
-      if (firebaseUser.value == null || _currentUser.value == null) {
-        return false;
-      }
-
-      // Update user profile in Firestore
-      await _firestore.collection('users').doc(firebaseUser.value!.uid).update({
-        'phoneNumber': phoneNumber,
-        'address': address,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      // Update local user model
-      _currentUser.value = _currentUser.value!.copyWith(
-        phoneNumber: phoneNumber,
-        address: address,
-        updatedAt: DateTime.now(),
-      );
-
-      return true;
-    } catch (e) {
-      print('Profile update error: $e');
-      return false;
-    }
-  }
-
-  // Send password reset email
-  Future<void> sendPasswordResetEmail(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-    } on FirebaseAuthException catch (e) {
-      print('Password reset error: $e');
-      throw e.message ?? 'Failed to send password reset email';
-    } catch (e) {
-      print('Password reset error: $e');
-      throw 'Failed to send password reset email';
-    }
-  }
-
-  // Sign out
+  // Sign out (mock implementation)
   Future<void> signOut() async {
     try {
-      await _googleSignIn.signOut(); // Sign out from Google
-      await _auth.signOut(); // Sign out from Firebase
+      // Clear user data
       _currentUser.value = null;
+      firebaseUser.value = null;
+      
+      // Clear preferences
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setBool('isLoggedIn', false);
+      prefs.remove('userId');
+      prefs.remove('userEmail');
+      prefs.remove('userName');
     } catch (e) {
       print('Sign out error: $e');
       throw 'Sign out failed';
     }
   }
 
-  // DIRECT FIX: Set current user directly without using problematic Firebase methods
+  // Update user profile (mock implementation)
+  Future<void> updateProfile({
+    required String fullName,
+    required String phoneNumber,
+    String? address,
+    String? city,
+    String? state,
+    String? zipCode,
+    String? country,
+  }) async {
+    try {
+      if (_currentUser.value != null) {
+        // Update the current user with new values
+        final updatedUser = UserModel(
+          id: _currentUser.value!.id,
+          email: _currentUser.value!.email,
+          fullName: fullName,
+          phoneNumber: phoneNumber,
+          address: address ?? _currentUser.value!.address,
+          city: city ?? _currentUser.value!.city,
+          state: state ?? _currentUser.value!.state,
+          zipCode: zipCode ?? _currentUser.value!.zipCode,
+          country: country ?? _currentUser.value!.country,
+          createdAt: _currentUser.value!.createdAt,
+          updatedAt: DateTime.now(),
+        );
+        
+        _currentUser.value = updatedUser;
+      }
+    } catch (e) {
+      print('Update profile error: $e');
+      throw 'Profile update failed';
+    }
+  }
+
+  // Reset password (mock implementation)
+  Future<void> resetPassword(String email) async {
+    try {
+      // Just print a confirmation message
+      print('Reset password email sent to: $email');
+    } catch (e) {
+      print('Reset password error: $e');
+      throw 'Password reset failed';
+    }
+  }
+  
+  // Get all users (for admin) - mock implementation
+  Future<List<UserModel>> getAllUsers() async {
+    if (!isAdmin) {
+      return [];
+    }
+    
+    // Create mock user list
+    final List<UserModel> mockUsers = [
+      UserModel(
+        id: 'user1',
+        email: 'user1@example.com',
+        fullName: 'John Doe',
+        phoneNumber: '1234567890',
+        address: '123 Main St',
+        city: 'New York',
+        state: 'NY',
+        zipCode: '10001',
+        country: 'USA',
+        createdAt: DateTime.now().subtract(const Duration(days: 30)),
+        updatedAt: DateTime.now().subtract(const Duration(days: 5)),
+      ),
+      UserModel(
+        id: 'user2',
+        email: 'user2@example.com',
+        fullName: 'Jane Smith',
+        phoneNumber: '9876543210',
+        address: '456 Park Ave',
+        city: 'Los Angeles',
+        state: 'CA',
+        zipCode: '90001',
+        country: 'USA',
+        createdAt: DateTime.now().subtract(const Duration(days: 20)),
+        updatedAt: DateTime.now().subtract(const Duration(days: 2)),
+      ),
+      UserModel(
+        id: 'user3',
+        email: 'user3@example.com',
+        fullName: 'Bob Johnson',
+        phoneNumber: '5555555555',
+        address: '789 Broadway',
+        city: 'Chicago',
+        state: 'IL',
+        zipCode: '60007',
+        country: 'USA',
+        createdAt: DateTime.now().subtract(const Duration(days: 10)),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+    
+    return mockUsers;
+  }
+  
+  // Upload KYC document (mock implementation)
+  Future<bool> uploadKycDocument({
+    required String documentType,
+    required String documentFile,
+    required String selfieFile,
+  }) async {
+    try {
+      if (_currentUser.value == null) {
+        return false;
+      }
+      
+      // Update local user model with mocked data
+      _currentUser.value = _currentUser.value!.copyWith(
+        documentType: documentType,
+        kycDocumentUrl: 'https://example.com/documents/$documentFile',
+        kycStatus: 'verified', // Automatically verify in mock implementation
+        updatedAt: DateTime.now(),
+      );
+      
+      return true;
+    } catch (e) {
+      print('KYC upload error: $e');
+      return false;
+    }
+  }
+  
+  // Set current user directly (mock implementation)
   void setCurrentUserDirectly({
     required String userId,
     required String email,
@@ -560,19 +387,64 @@ class AuthService extends GetxService {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-
+      
       // Set the current user directly
       _currentUser.value = user;
-
-      // Try to get the Firebase user as well
-      final currentFirebaseUser = _auth.currentUser;
-      if (currentFirebaseUser != null && currentFirebaseUser.uid == userId) {
-        firebaseUser.value = currentFirebaseUser;
-      }
-
+      
+      // Create mock Firebase user
+      firebaseUser.value = User(
+        uid: userId,
+        email: email,
+        displayName: fullName
+      );
+      
       print('User set directly in AuthService: $userId');
     } catch (e) {
       print('Error setting user directly: $e');
+    }
+  }
+  
+  // Send OTP to phone number (mock implementation)
+  Future<bool> sendOtp(String phoneNumber) async {
+    try {
+      // Mock successful OTP sending
+      _verificationId = 'mock-verification-id-${DateTime.now().millisecondsSinceEpoch}';
+      
+      print('Mock OTP sent to: $phoneNumber');
+      return true;
+    } catch (e) {
+      print('Send OTP error: $e');
+      return false;
+    }
+  }
+  
+  // Verify OTP (mock implementation)
+  Future<bool> verifyOtp(String otp) async {
+    try {
+      if (_verificationId == null) {
+        return false;
+      }
+      
+      // Mock successful verification (accept any OTP)
+      if (otp.length >= 4) {
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      print('Verify OTP error: $e');
+      return false;
+    }
+  }
+  
+  // Send password reset email (mock implementation)
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      // Mock successful password reset email
+      print('Mock password reset email sent to: $email');
+    } catch (e) {
+      print('Password reset error: $e');
+      throw 'Failed to send password reset email';
     }
   }
 }

@@ -66,11 +66,11 @@ class HomeController extends GetxController {
   }
 
   void navigateToLoanApplication() {
-    Get.snackbar('Coming Soon', 'Loan application will be available soon!');
+    Get.toNamed(Routes.LOAN_APPLICATION);
   }
 
   void navigateToLoanDetails(LoanModel loan) {
-    Get.snackbar('Coming Soon', 'Loan details will be available soon!');
+    Get.toNamed(Routes.LOAN_DETAILS, arguments: {'loanId': loan.id});
   }
 
   void signOut() async {

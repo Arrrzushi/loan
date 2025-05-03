@@ -21,6 +21,7 @@ class LoanModel {
   final DateTime startDate;
   final DateTime? endDate;
   final List<RepaymentModel> repayments;
+  final String userName;
 
   LoanModel({
     required this.id,
@@ -43,6 +44,7 @@ class LoanModel {
     required this.startDate,
     this.endDate,
     required this.repayments,
+    this.userName = 'User',
   });
 
   Map<String, dynamic> toMap() {
@@ -68,6 +70,7 @@ class LoanModel {
       'startDate': startDate.toIso8601String(),
       'endDate': endDate?.toIso8601String(),
       'repayments': repayments.map((e) => e.toMap()).toList(),
+      'userName': userName,
     };
   }
 
@@ -104,6 +107,7 @@ class LoanModel {
               ?.map((e) => RepaymentModel.fromMap(e as Map<String, dynamic>))
               .toList() ??
           [],
+      userName: map['userName'] ?? 'User',
     );
   }
 
@@ -139,6 +143,7 @@ class LoanModel {
               ?.map((e) => RepaymentModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      userName: json['userName'] as String? ?? 'User',
     );
   }
 
@@ -157,6 +162,17 @@ class LoanModel {
 
   // Helper to get progress percentage
   double get progressPercentage => paidInstallments / totalInstallments;
+  
+  // Helper to calculate interest amount
+  double get interestAmount => amount * (interestRate / 100) * tenureMonths / 12;
+  
+  // Helper to get formatted start date
+  String get formattedStartDate => DateFormat('MMM dd, yyyy').format(startDate);
+  
+  // Helper to get formatted end date
+  String get formattedEndDate => endDate != null 
+      ? DateFormat('MMM dd, yyyy').format(endDate!) 
+      : 'Not available';
 }
 
 class PaymentModel {

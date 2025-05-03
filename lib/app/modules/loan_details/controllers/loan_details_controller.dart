@@ -1,63 +1,72 @@
 import 'package:get/get.dart';
 import '../../../data/models/loan_model.dart';
-import '../../../data/providers/loan_provider.dart';
+import '../../../data/services/loan_service.dart';
 
 class LoanDetailsController extends GetxController {
-  final LoanProvider _loanProvider = Get.find<LoanProvider>();
-
-  final Rx<LoanModel?> loan = Rx<LoanModel?>(null);
-  final RxBool isLoading = true.obs;
-
+  final LoanService _loanService = Get.find<LoanService>();
+  
+  final isLoading = true.obs;
+  final loan = Rx<LoanModel?>(null);
+  final userName = ''.obs;
+  
   @override
   void onInit() {
     super.onInit();
-    loadLoanDetails();
+    _loadLoanDetails();
   }
-
-  Future<void> loadLoanDetails() async {
+  
+  Future<void> _loadLoanDetails() async {
     try {
       isLoading.value = true;
-      // TODO: Replace with actual loan ID from route parameters
-      final loanId = Get.parameters['id'];
-      if (loanId != null) {
-        final loanData = await _loanProvider.getLoanDetails(loanId);
-        loan.value = loanData;
+      
+      // Get loan ID from arguments
+      final args = Get.arguments as Map<String, dynamic>?;
+      if (args == null || !args.containsKey('loanId')) {
+        print('Error: Loan ID not provided');
+        Future.microtask(() => Get.back());
+        return;
       }
+      
+      final loanId = args['loanId'] as String;
+      
+      // Get loan details
+      final allLoans = await _loanService.getAllLoans();
+      final selectedLoan = allLoans.firstWhereOrNull((loan) => loan.id == loanId);
+      
+      if (selectedLoan == null) {
+        print('Error: Loan not found');
+        Future.microtask(() => Get.back());
+        return;
+      }
+      
+      loan.value = selectedLoan;
+      
+      // Set user name (in a real app, you would fetch this from a user service)
+      userName.value = 'Customer'; // Placeholder
+      
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to load loan details',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      print('Error: Failed to load loan details: $e');
     } finally {
       isLoading.value = false;
     }
   }
-
+  
   void handleRepayment() {
-    // TODO: Implement repayment logic
-    Get.snackbar(
-      'Coming Soon',
-      'Repayment functionality will be available soon',
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    if (loan.value == null) return;
+    
+    // Navigate to payment screen
+    Get.toNamed('/payment', arguments: {
+      'loanId': loan.value!.id,
+      'amount': loan.value!.emiAmount,
+      'dueDate': loan.value!.dueDate,
+    });
   }
-
-  void handleUpdate(String updateTitle) {
-    // TODO: Implement update handling logic
-    Get.snackbar(
-      'Update',
-      'Handling update: $updateTitle',
-      snackPosition: SnackPosition.BOTTOM,
-    );
-  }
-
+  
   void viewAllUpdates() {
-    // TODO: Navigate to updates screen
-    Get.snackbar(
-      'Coming Soon',
-      'Updates screen will be available soon',
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    Get.snackbar('Coming Soon', 'This feature will be available soon');
+  }
+  
+  void handleUpdate(String title) {
+    Get.snackbar('Update', 'Processing $title');
   }
 }

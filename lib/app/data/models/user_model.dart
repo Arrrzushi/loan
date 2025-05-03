@@ -4,6 +4,10 @@ class UserModel {
   final String fullName;
   final String phoneNumber;
   final String address;
+  final String city;
+  final String state;
+  final String zipCode;
+  final String country;
   final String documentType;
   final String kycDocumentUrl;
   final String kycStatus;
@@ -17,6 +21,10 @@ class UserModel {
     required this.fullName,
     this.phoneNumber = '',
     this.address = '',
+    this.city = '',
+    this.state = '',
+    this.zipCode = '',
+    this.country = '',
     this.documentType = '',
     this.kycDocumentUrl = '',
     this.kycStatus = 'pending',
@@ -32,6 +40,10 @@ class UserModel {
       'fullName': fullName,
       'phoneNumber': phoneNumber,
       'address': address,
+      'city': city,
+      'state': state,
+      'zipCode': zipCode,
+      'country': country,
       'documentType': documentType,
       'kycDocumentUrl': kycDocumentUrl,
       'kycStatus': kycStatus,
@@ -48,6 +60,10 @@ class UserModel {
       fullName: map['fullName'] ?? '',
       phoneNumber: map['phoneNumber'] ?? '',
       address: map['address'] ?? '',
+      city: map['city'] ?? '',
+      state: map['state'] ?? '',
+      zipCode: map['zipCode'] ?? '',
+      country: map['country'] ?? '',
       documentType: map['documentType'] ?? '',
       kycDocumentUrl: map['kycDocumentUrl'] ?? '',
       kycStatus: map['kycStatus'] ?? 'pending',
@@ -63,6 +79,10 @@ class UserModel {
     String? fullName,
     String? phoneNumber,
     String? address,
+    String? city,
+    String? state,
+    String? zipCode,
+    String? country,
     String? documentType,
     String? kycDocumentUrl,
     String? kycStatus,
@@ -76,6 +96,10 @@ class UserModel {
       fullName: fullName ?? this.fullName,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       address: address ?? this.address,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      zipCode: zipCode ?? this.zipCode,
+      country: country ?? this.country,
       kycStatus: kycStatus ?? this.kycStatus,
       kycDocumentUrl: kycDocumentUrl ?? this.kycDocumentUrl,
       documentType: documentType ?? this.documentType,

@@ -5,8 +5,8 @@ import 'package:loan_app/app/data/services/email_service.dart';
 import 'package:loan_app/app/data/services/loan_service.dart';
 import 'package:loan_app/app/routes/app_pages.dart';
 import 'package:loan_app/app/utils/pigeon_fix.dart';
-import 'firebase_options.dart';
-import 'package:firebase_core/firebase_core.dart';
+// import 'firebase_options.dart';
+// import 'package:firebase_core/firebase_core.dart';
 import 'dart:async';
 
 // Global error handler for pigeon-related errors
@@ -34,17 +34,14 @@ void main() async {
     PigeonFix.apply();
 
     // Print diagnostic message
-    debugPrint('Starting Firebase initialization...');
+    debugPrint('Starting app initialization...');
 
-    // ✅ Initialize Firebase with options
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    // TEMPORARILY DISABLED Firebase initialization
+    // await Firebase.initializeApp(
+    //   options: DefaultFirebaseOptions.currentPlatform,
+    // );
 
-    debugPrint('Firebase initialized successfully');
-
-    // Apply Pigeon fix again after Firebase initialization to ensure it catches auth methods
-    PigeonFix.apply();
+    debugPrint('App initialized successfully');
 
     // ✅ Initialize other services
     await initServices();

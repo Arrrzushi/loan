@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -11,15 +12,21 @@ class LoanApplicationController extends GetxController {
 
   final amountController = TextEditingController();
   final tenureController = TextEditingController();
+  final purposeController = TextEditingController();
 
   final formKey = GlobalKey<FormState>();
   final RxBool isLoading = false.obs;
   final RxString errorMessage = ''.obs;
 
-  final RxDouble selectedAmount = 10000.0.obs;
+  final RxDouble selectedAmount = 100000.0.obs;
   final RxInt selectedTenure = 12.obs;
+  final RxString selectedLoanType = ''.obs;
+  final RxString loanTypeError = ''.obs;
+  final RxBool termsAccepted = false.obs;
 
   final RxDouble emiAmount = 0.0.obs;
+  final RxDouble totalInterest = 0.0.obs;
+  final RxDouble totalAmount = 0.0.obs;
 
   final List<int> tenureOptions = [3, 6, 12, 24, 36];
 
@@ -35,48 +42,70 @@ class LoanApplicationController extends GetxController {
   final RxString companyName = ''.obs;
   final RxInt workExperienceYears = 2.obs;
 
+  // Loan configuration
+  final double minAmount = 10000;
+  final double maxAmount = 1000000;
+  final int minTenure = 3;
+  final int maxTenure = 60;
+  final double interestRate = 10.5; // Annual interest rate
+
   @override
   void onInit() {
     super.onInit();
-    updateEMI();
+    calculateLoanDetails();
   }
 
   @override
   void onClose() {
     amountController.dispose();
     tenureController.dispose();
+    purposeController.dispose();
     super.onClose();
+  }
+
+  void selectLoanType(String type) {
+    selectedLoanType.value = type;
+    loanTypeError.value = '';
   }
 
   void updateAmount(double value) {
     selectedAmount.value = value;
     amountController.text = value.toStringAsFixed(0);
-    updateEMI();
+    calculateLoanDetails();
   }
 
   void updateTenure(int value) {
     selectedTenure.value = value;
     tenureController.text = value.toString();
-    updateEMI();
+    calculateLoanDetails();
   }
 
-  void updateEMI() {
+  void toggleTerms() {
+    termsAccepted.value = !termsAccepted.value;
+  }
+
+  void calculateLoanDetails() {
     // Calculate EMI using the formula: EMI = P * r * (1+r)^n / ((1+r)^n - 1)
-    // where P = Principal, r = monthly interest rate, n = tenure in months
-    final interestRate = 10.0; // 10% per annum
-    final monthlyInterestRate = interestRate / (12 * 100);
-
-    final P = selectedAmount.value;
-    final r = monthlyInterestRate;
-    final n = selectedTenure.value;
-
-    final emi = (P * r * _pow(1 + r, n)) / (_pow(1 + r, n) - 1);
+    // where P = Principal, r = monthly interest rate, n = number of months
+    
+    double principal = selectedAmount.value;
+    int tenure = selectedTenure.value;
+    double annualInterestRate = interestRate / 100;
+    double monthlyInterestRate = annualInterestRate / 12;
+    
+    double emi = (principal * 
+                 monthlyInterestRate * 
+                 _pow(1 + monthlyInterestRate, tenure)) / 
+                (_pow(1 + monthlyInterestRate, tenure) - 1);
+    
     emiAmount.value = emi;
+    totalAmount.value = emi * tenure;
+    totalInterest.value = totalAmount.value - principal;
   }
 
-  double _pow(double x, int y) {
+  double _pow(double x, int n) {
     double result = 1.0;
-    for (int i = 0; i < y; i++) {
+    for (int i = 0; i < n; i++) {
       result *= x;
     }
     return result;
@@ -143,32 +172,47 @@ class LoanApplicationController extends GetxController {
     return true;
   }
 
-  Future<void> applyForLoan() async {
-    if (!validateForm()) return;
-
+  Future<void> submitApplication() async {
+    // Validate the form
+    if (!formKey.currentState!.validate()) {
+      return;
+    }
+    
+    // Validate loan type
+    if (selectedLoanType.isEmpty) {
+      loanTypeError.value = 'Please select a loan type';
+      return;
+    }
+    
+    // Validate terms acceptance
+    if (!termsAccepted.value) {
+      Get.snackbar('Error', 'Please accept the terms and conditions');
+      return;
+    }
+    
     try {
       isLoading.value = true;
-      errorMessage.value = '';
-
-      final success = await _loanService.applyForLoan(
-        amount: loanAmount.value,
-        tenureMonths: tenureMonths.value,
-        loanType: loanType.value,
-        purpose: purpose.value,
+      
+      final result = await _loanService.applyForLoan(
+        amount: selectedAmount.value,
+        tenureMonths: selectedTenure.value,
+        loanType: selectedLoanType.value,
+        purpose: purposeController.text.trim(),
       );
-
-      if (success) {
-        Get.offAllNamed(Routes.HOME);
+      
+      if (result) {
+        Get.offNamed(Routes.HOME);
         Get.snackbar(
-          'Application Submitted',
-          'Your loan application has been submitted successfully!',
-          snackPosition: SnackPosition.BOTTOM,
+          'Success', 
+          'Your loan application has been submitted successfully',
+          backgroundColor: Colors.green[100],
+          colorText: Colors.green[800],
         );
       } else {
-        errorMessage.value = 'Failed to submit loan application';
+        Get.snackbar('Error', 'Failed to submit loan application');
       }
     } catch (e) {
-      errorMessage.value = 'Error: ${e.toString()}';
+      Get.snackbar('Error', 'An error occurred: $e');
     } finally {
       isLoading.value = false;
     }
